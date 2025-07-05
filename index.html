@@ -199,6 +199,15 @@
             color: #2c3e50;
             font-weight: bold;
         }
+        
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+            padding: 10px;
+            background-color: #fadbd8;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -261,12 +270,25 @@
         async function loadExpressionData() {
             try {
                 const response = await fetch('video_expression_mapping.json');
-                expressionData = await response.json();
-                collectAllExpressions();
-                renderSidebar();
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const text = await response.text();
+                // 去除可能存在的BOM和尾部空格
+                const cleanText = text.replace(/^\uFEFF/, '').trim();
+                
+                try {
+                    expressionData = JSON.parse(cleanText);
+                    collectAllExpressions();
+                    renderSidebar();
+                } catch (parseError) {
+                    console.error('JSON解析错误:', parseError);
+                    sidebar.innerHTML = `<div class="error">JSON解析错误: ${parseError.message}</div>`;
+                }
             } catch (error) {
                 console.error('加载表情数据失败:', error);
-                sidebar.innerHTML = '<div class="error">加载表情数据失败</div>';
+                sidebar.innerHTML = `<div class="error">加载表情数据失败: ${error.message}</div>`;
             }
         }
         
@@ -283,18 +305,35 @@
                             subcategory: null
                         });
                     });
-                } else {
+                } else if (typeof value === 'object') {
                     Object.entries(value).forEach(([subcategory, expressions]) => {
-                        expressions.forEach(expression => {
-                            allExpressions.push({
-                                expression,
-                                category,
-                                subcategory
+                        if (Array.isArray(expressions)) {
+                            expressions.forEach(expression => {
+                                allExpressions.push({
+                                    expression,
+                                    category,
+                                    subcategory
+                                });
                             });
-                        });
+                        } else if (typeof expressions === 'object') {
+                            // 处理嵌套对象，如AI听取表情
+                            Object.entries(expressions).forEach(([nestedSubcategory, nestedExpressions]) => {
+                                if (Array.isArray(nestedExpressions)) {
+                                    nestedExpressions.forEach(expression => {
+                                        allExpressions.push({
+                                            expression,
+                                            category,
+                                            subcategory: `${subcategory} - ${nestedSubcategory}`
+                                        });
+                                    });
+                                }
+                            });
+                        }
                     });
                 }
             });
+            
+            console.log(`收集到 ${allExpressions.length} 个表情`);
         }
         
         // 渲染侧边栏
@@ -355,7 +394,7 @@
                         const expressionItem = createExpressionItem(expression, category);
                         categoryDiv.appendChild(expressionItem);
                     });
-                } else {
+                } else if (typeof value === 'object') {
                     // 如果值是对象，创建子类别
                     Object.entries(value).forEach(([subcategory, expressions]) => {
                         const subcategoryDiv = document.createElement('div');
@@ -374,10 +413,18 @@
                             const toggleIcon = subcategoryTitle.querySelector('.toggle-icon');
                             toggleIcon.classList.toggle('open');
                             
-                            const items = subcategoryDiv.querySelectorAll('.expression-item');
-                            items.forEach(item => {
-                                item.style.display = toggleIcon.classList.contains('open') ? 'block' : 'none';
-                            });
+                            if (Array.isArray(expressions)) {
+                                const items = subcategoryDiv.querySelectorAll('.expression-item');
+                                items.forEach(item => {
+                                    item.style.display = toggleIcon.classList.contains('open') ? 'block' : 'none';
+                                });
+                            } else if (typeof expressions === 'object') {
+                                // 处理嵌套对象，如AI听取表情
+                                const nestedSubcategories = subcategoryDiv.querySelectorAll('.nested-subcategory');
+                                nestedSubcategories.forEach(nested => {
+                                    nested.style.display = toggleIcon.classList.contains('open') ? 'block' : 'none';
+                                });
+                            }
                             
                             // 更新面包屑
                             updateBreadcrumb(category, subcategory);
@@ -385,10 +432,51 @@
                         
                         subcategoryDiv.appendChild(subcategoryTitle);
                         
-                        expressions.forEach(expression => {
-                            const expressionItem = createExpressionItem(expression, category, subcategory);
-                            subcategoryDiv.appendChild(expressionItem);
-                        });
+                        if (Array.isArray(expressions)) {
+                            expressions.forEach(expression => {
+                                const expressionItem = createExpressionItem(expression, category, subcategory);
+                                subcategoryDiv.appendChild(expressionItem);
+                            });
+                        } else if (typeof expressions === 'object') {
+                            // 处理嵌套对象，如AI听取表情
+                            Object.entries(expressions).forEach(([nestedSubcategory, nestedExpressions]) => {
+                                const nestedDiv = document.createElement('div');
+                                nestedDiv.className = 'nested-subcategory';
+                                nestedDiv.style.display = 'none';
+                                nestedDiv.style.marginLeft = '15px';
+                                
+                                const nestedTitle = document.createElement('div');
+                                nestedTitle.className = 'subcategory-title';
+                                nestedTitle.innerHTML = `
+                                    <span>${nestedSubcategory}</span>
+                                    <span class="toggle-icon">▶</span>
+                                `;
+                                
+                                nestedTitle.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    const toggleIcon = nestedTitle.querySelector('.toggle-icon');
+                                    toggleIcon.classList.toggle('open');
+                                    
+                                    const items = nestedDiv.querySelectorAll('.expression-item');
+                                    items.forEach(item => {
+                                        item.style.display = toggleIcon.classList.contains('open') ? 'block' : 'none';
+                                    });
+                                    
+                                    updateBreadcrumb(category, `${subcategory} - ${nestedSubcategory}`);
+                                });
+                                
+                                nestedDiv.appendChild(nestedTitle);
+                                
+                                if (Array.isArray(nestedExpressions)) {
+                                    nestedExpressions.forEach(expression => {
+                                        const expressionItem = createExpressionItem(expression, category, `${subcategory} - ${nestedSubcategory}`);
+                                        nestedDiv.appendChild(expressionItem);
+                                    });
+                                }
+                                
+                                subcategoryDiv.appendChild(nestedDiv);
+                            });
+                        }
                         
                         categoryDiv.appendChild(subcategoryDiv);
                     });
@@ -528,11 +616,31 @@
                 subcategoryItem.textContent = subcategory;
                 subcategoryItem.addEventListener('click', () => {
                     // 点击子类别面包屑时，展开该子类别
-                    const subcategoryDiv = Array.from(document.querySelectorAll('.subcategory-title')).find(
-                        el => el.querySelector('span').textContent === subcategory
-                    );
-                    if (subcategoryDiv) {
-                        subcategoryDiv.click();
+                    if (subcategory.includes(' - ')) {
+                        // 处理嵌套子类别
+                        const [mainSubcategory, nestedSubcategory] = subcategory.split(' - ');
+                        const mainSubcategoryDiv = Array.from(document.querySelectorAll('.subcategory-title')).find(
+                            el => el.querySelector('span').textContent === mainSubcategory
+                        );
+                        if (mainSubcategoryDiv) {
+                            mainSubcategoryDiv.click();
+                            
+                            setTimeout(() => {
+                                const nestedSubcategoryDiv = Array.from(document.querySelectorAll('.nested-subcategory .subcategory-title')).find(
+                                    el => el.querySelector('span').textContent === nestedSubcategory
+                                );
+                                if (nestedSubcategoryDiv) {
+                                    nestedSubcategoryDiv.click();
+                                }
+                            }, 100);
+                        }
+                    } else {
+                        const subcategoryDiv = Array.from(document.querySelectorAll('.subcategory-title')).find(
+                            el => el.querySelector('span').textContent === subcategory
+                        );
+                        if (subcategoryDiv) {
+                            subcategoryDiv.click();
+                        }
                     }
                 });
                 breadcrumb.appendChild(subcategoryItem);
@@ -558,6 +666,9 @@
                 document.querySelectorAll('.subcategory').forEach(subcategory => {
                     subcategory.style.display = 'none';
                 });
+                document.querySelectorAll('.nested-subcategory').forEach(nested => {
+                    nested.style.display = 'none';
+                });
                 document.querySelectorAll('.expression-item').forEach(item => {
                     item.style.display = 'none';
                 });
@@ -580,6 +691,14 @@
                     item.style.display = 'block';
                     
                     // 显示父类别和子类别
+                    const parentNestedSubcategory = item.closest('.nested-subcategory');
+                    if (parentNestedSubcategory) {
+                        parentNestedSubcategory.style.display = 'block';
+                        // 设置嵌套子类别的toggle图标为打开状态
+                        const toggleIcon = parentNestedSubcategory.querySelector('.toggle-icon');
+                        if (toggleIcon) toggleIcon.classList.add('open');
+                    }
+                    
                     const parentSubcategory = item.closest('.subcategory');
                     if (parentSubcategory) {
                         parentSubcategory.style.display = 'block';
