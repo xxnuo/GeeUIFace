@@ -45,11 +45,17 @@
             border-radius: 10px;
             overflow: hidden;
             margin-top: 20px;
+            position: relative;
+            padding-bottom: 50%; /* 1:1 宽高比 */
+            height: 0;
         }
         
         video {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            height: auto;
+            height: 100%;
             display: block;
         }
         
@@ -221,7 +227,6 @@
         </div>
         
         <div class="content">
-            <h1>GeeUI表情播放器</h1>
             
             <div class="breadcrumb" id="breadcrumb">
                 <span class="breadcrumb-item">首页</span>
