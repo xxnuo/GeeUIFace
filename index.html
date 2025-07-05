@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeeUI表情播放器</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            overflow-y: auto;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        
+        .video-container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .category {
+            margin-bottom: 15px;
+        }
+        
+        .category-title {
+            font-weight: bold;
+            font-size: 18px;
+            padding: 8px;
+            background-color: #34495e;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .subcategory {
+            margin-left: 15px;
+            margin-bottom: 10px;
+            display: none; /* 默认隐藏子类别 */
+        }
+        
+        .subcategory-title {
+            font-weight: bold;
+            padding: 5px;
+            background-color: #3498db;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .expression-item {
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #7f8c8d;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: none; /* 默认隐藏表情项 */
+        }
+        
+        .expression-item:hover {
+            background-color: #95a5a6;
+        }
+        
+        .expression-item.active {
+            background-color: #e74c3c;
+        }
+        
+        .toggle-icon {
+            font-size: 16px;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-icon.open {
+            transform: rotate(90deg);
+        }
+        
+        .info {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 20px;
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .current-expression {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        .search-container {
+            margin-bottom: 10px;
+            width: 100%;
+            display: flex;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            margin-right: 5px;
+        }
+        
+        .search-btn {
+            padding: 8px 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #27ae60;
+        }
+        
+        .breadcrumb {
+            width: 100%;
+            max-width: 800px;
+            padding: 10px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .breadcrumb-item {
+            display: inline-block;
+            margin-right: 5px;
+            color: #3498db;
+            cursor: pointer;
+        }
+        
+        .breadcrumb-item:not(:last-child)::after {
+            content: " > ";
+            color: #7f8c8d;
+        }
+        
+        .breadcrumb-item:last-child {
+            color: #2c3e50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <div class="search-container">
+                <input type="text" class="search-input" id="searchInput" placeholder="搜索表情...">
+                <button class="search-btn" id="searchBtn">搜索</button>
+            </div>
+            <div class="loading">加载中...</div>
+        </div>
+        
+        <div class="content">
+            <h1>GeeUI表情播放器</h1>
+            
+            <div class="breadcrumb" id="breadcrumb">
+                <span class="breadcrumb-item">首页</span>
+            </div>
+            
+            <div class="buttons">
+                <button id="randomBtn">随机播放</button>
+                <button id="autoPlayBtn">自动播放</button>
+                <button id="stopBtn">停止播放</button>
+            </div>
+            
+            <div class="video-container">
+                <video id="videoPlayer" autoplay muted loop></video>
+            </div>
+            
+            <div class="info">
+                <p>当前播放: <span class="current-expression" id="currentExpression">无</span></p>
+                <p>视频文件: <span id="currentVideo">无</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let expressionData = {};
+        let currentVideoFile = '';
+        let currentCategory = '';
+        let currentSubcategory = '';
+        let currentExpression = '';
+        let autoPlayInterval = null;
+        let allExpressions = [];
+        
+        // DOM元素
+        const videoPlayer = document.getElementById('videoPlayer');
+        const sidebar = document.getElementById('sidebar');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const randomBtn = document.getElementById('randomBtn');
+        const autoPlayBtn = document.getElementById('autoPlayBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const breadcrumb = document.getElementById('breadcrumb');
+        const currentExpressionSpan = document.getElementById('currentExpression');
+        const currentVideoSpan = document.getElementById('currentVideo');
+        
+        // 加载表情数据
+        async function loadExpressionData() {
+            try {
+                const response = await fetch('video_expression_mapping.json');
+                expressionData = await response.json();
+                collectAllExpressions();
+                renderSidebar();
+            } catch (error) {
+                console.error('加载表情数据失败:', error);
+                sidebar.innerHTML = '<div class="error">加载表情数据失败</div>';
+            }
+        }
+        
+        // 收集所有表情
+        function collectAllExpressions() {
+            allExpressions = [];
+            
+            Object.entries(expressionData).forEach(([category, value]) => {
+                if (Array.isArray(value)) {
+                    value.forEach(expression => {
+                        allExpressions.push({
+                            expression,
+                            category,
+                            subcategory: null
+                        });
+                    });
+                } else {
+                    Object.entries(value).forEach(([subcategory, expressions]) => {
+                        expressions.forEach(expression => {
+                            allExpressions.push({
+                                expression,
+                                category,
+                                subcategory
+                            });
+                        });
+                    });
+                }
+            });
+        }
+        
+        // 渲染侧边栏
+        function renderSidebar() {
+            sidebar.innerHTML = '';
+            
+            const searchContainer = document.createElement('div');
+            searchContainer.className = 'search-container';
+            searchContainer.innerHTML = `
+                <input type="text" class="search-input" id="searchInput" placeholder="搜索表情...">
+                <button class="search-btn" id="searchBtn">搜索</button>
+            `;
+            sidebar.appendChild(searchContainer);
+            
+            // 重新绑定搜索事件
+            document.getElementById('searchInput').addEventListener('input', handleSearch);
+            document.getElementById('searchBtn').addEventListener('click', handleSearch);
+            
+            Object.entries(expressionData).forEach(([category, value]) => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'category';
+                
+                const categoryTitle = document.createElement('div');
+                categoryTitle.className = 'category-title';
+                categoryTitle.innerHTML = `
+                    <span>${category}</span>
+                    <span class="toggle-icon">▶</span>
+                `;
+                
+                categoryTitle.addEventListener('click', () => {
+                    // 切换子类别的显示/隐藏
+                    const toggleIcon = categoryTitle.querySelector('.toggle-icon');
+                    toggleIcon.classList.toggle('open');
+                    
+                    if (Array.isArray(value)) {
+                        // 如果是数组，直接切换表情项的显示/隐藏
+                        const expressionItems = categoryDiv.querySelectorAll('.expression-item');
+                        expressionItems.forEach(item => {
+                            item.style.display = toggleIcon.classList.contains('open') ? 'block' : 'none';
+                        });
+                    } else {
+                        // 如果是对象，切换子类别的显示/隐藏
+                        const subcategories = categoryDiv.querySelectorAll('.subcategory');
+                        subcategories.forEach(sub => {
+                            sub.style.display = toggleIcon.classList.contains('open') ? 'block' : 'none';
+                        });
+                    }
+                    
+                    // 更新面包屑
+                    updateBreadcrumb(category);
+                });
+                
+                categoryDiv.appendChild(categoryTitle);
+                
+                if (Array.isArray(value)) {
+                    // 如果值是数组，直接显示表情项
+                    value.forEach(expression => {
+                        const expressionItem = createExpressionItem(expression, category);
+                        categoryDiv.appendChild(expressionItem);
+                    });
+                } else {
+                    // 如果值是对象，创建子类别
+                    Object.entries(value).forEach(([subcategory, expressions]) => {
+                        const subcategoryDiv = document.createElement('div');
+                        subcategoryDiv.className = 'subcategory';
+                        
+                        const subcategoryTitle = document.createElement('div');
+                        subcategoryTitle.className = 'subcategory-title';
+                        subcategoryTitle.innerHTML = `
+                            <span>${subcategory}</span>
+                            <span class="toggle-icon">▶</span>
+                        `;
+                        
+                        subcategoryTitle.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            // 切换表情项的显示/隐藏
+                            const toggleIcon = subcategoryTitle.querySelector('.toggle-icon');
+                            toggleIcon.classList.toggle('open');
+                            
+                            const items = subcategoryDiv.querySelectorAll('.expression-item');
+                            items.forEach(item => {
+                                item.style.display = toggleIcon.classList.contains('open') ? 'block' : 'none';
+                            });
+                            
+                            // 更新面包屑
+                            updateBreadcrumb(category, subcategory);
+                        });
+                        
+                        subcategoryDiv.appendChild(subcategoryTitle);
+                        
+                        expressions.forEach(expression => {
+                            const expressionItem = createExpressionItem(expression, category, subcategory);
+                            subcategoryDiv.appendChild(expressionItem);
+                        });
+                        
+                        categoryDiv.appendChild(subcategoryDiv);
+                    });
+                }
+                
+                sidebar.appendChild(categoryDiv);
+            });
+        }
+        
+        // 创建表情项
+        function createExpressionItem(expression, category, subcategory = null) {
+            const item = document.createElement('div');
+            item.className = 'expression-item';
+            item.textContent = expression;
+            item.dataset.expression = expression;
+            item.dataset.category = category;
+            if (subcategory) {
+                item.dataset.subcategory = subcategory;
+            }
+            
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                playExpression(expression, category, subcategory);
+                
+                // 移除其他项的活动状态
+                document.querySelectorAll('.expression-item.active').forEach(activeItem => {
+                    activeItem.classList.remove('active');
+                });
+                
+                // 添加当前项的活动状态
+                item.classList.add('active');
+            });
+            
+            return item;
+        }
+        
+        // 播放表情
+        function playExpression(expression, category, subcategory = null) {
+            currentExpression = expression;
+            currentCategory = category;
+            currentSubcategory = subcategory;
+            currentVideoFile = expression;
+            
+            // 更新面包屑
+            updateBreadcrumb(category, subcategory, expression);
+            
+            // 更新显示信息
+            let displayPath = category;
+            if (subcategory) {
+                displayPath += ` > ${subcategory}`;
+            }
+            currentExpressionSpan.textContent = `${displayPath} > ${expression}`;
+            currentVideoSpan.textContent = `${expression}.mp4`;
+            
+            // 设置视频源并播放
+            videoPlayer.src = `app/src/main/assets/video/${expression}.mp4`;
+            videoPlayer.load();
+            videoPlayer.play().catch(error => {
+                console.error('播放视频失败:', error);
+                currentExpressionSpan.textContent = '播放失败';
+            });
+        }
+        
+        // 随机播放表情
+        function playRandomExpression() {
+            if (allExpressions.length === 0) {
+                alert('没有可用的表情');
+                return;
+            }
+            
+            const randomIndex = Math.floor(Math.random() * allExpressions.length);
+            const randomExpression = allExpressions[randomIndex];
+            
+            playExpression(
+                randomExpression.expression, 
+                randomExpression.category, 
+                randomExpression.subcategory
+            );
+            
+            // 移除其他项的活动状态
+            document.querySelectorAll('.expression-item.active').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // 添加当前项的活动状态
+            document.querySelectorAll(`.expression-item[data-expression="${randomExpression.expression}"]`).forEach(item => {
+                item.classList.add('active');
+            });
+        }
+        
+        // 自动播放
+        function toggleAutoPlay() {
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+                autoPlayBtn.textContent = '自动播放';
+            } else {
+                autoPlayBtn.textContent = '停止自动播放';
+                playRandomExpression();
+                autoPlayInterval = setInterval(playRandomExpression, 5000);
+            }
+        }
+        
+        // 停止播放
+        function stopPlaying() {
+            videoPlayer.pause();
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+                autoPlayBtn.textContent = '自动播放';
+            }
+        }
+        
+        // 更新面包屑
+        function updateBreadcrumb(category, subcategory = null, expression = null) {
+            breadcrumb.innerHTML = '<span class="breadcrumb-item">首页</span>';
+            
+            if (category) {
+                const categoryItem = document.createElement('span');
+                categoryItem.className = 'breadcrumb-item';
+                categoryItem.textContent = category;
+                categoryItem.addEventListener('click', () => {
+                    // 点击类别面包屑时，展开该类别
+                    const categoryDiv = Array.from(document.querySelectorAll('.category-title')).find(
+                        el => el.querySelector('span').textContent === category
+                    );
+                    if (categoryDiv) {
+                        categoryDiv.click();
+                    }
+                });
+                breadcrumb.appendChild(categoryItem);
+            }
+            
+            if (subcategory) {
+                const subcategoryItem = document.createElement('span');
+                subcategoryItem.className = 'breadcrumb-item';
+                subcategoryItem.textContent = subcategory;
+                subcategoryItem.addEventListener('click', () => {
+                    // 点击子类别面包屑时，展开该子类别
+                    const subcategoryDiv = Array.from(document.querySelectorAll('.subcategory-title')).find(
+                        el => el.querySelector('span').textContent === subcategory
+                    );
+                    if (subcategoryDiv) {
+                        subcategoryDiv.click();
+                    }
+                });
+                breadcrumb.appendChild(subcategoryItem);
+            }
+            
+            if (expression) {
+                const expressionItem = document.createElement('span');
+                expressionItem.className = 'breadcrumb-item';
+                expressionItem.textContent = expression;
+                breadcrumb.appendChild(expressionItem);
+            }
+        }
+        
+        // 处理搜索
+        function handleSearch() {
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            if (!searchTerm) {
+                // 如果搜索词为空，恢复默认视图
+                document.querySelectorAll('.category').forEach(category => {
+                    category.style.display = 'block';
+                });
+                document.querySelectorAll('.subcategory').forEach(subcategory => {
+                    subcategory.style.display = 'none';
+                });
+                document.querySelectorAll('.expression-item').forEach(item => {
+                    item.style.display = 'none';
+                });
+                // 重置所有toggle图标
+                document.querySelectorAll('.toggle-icon').forEach(icon => {
+                    icon.classList.remove('open');
+                });
+                return;
+            }
+            
+            // 隐藏所有类别、子类别和表情项
+            document.querySelectorAll('.category').forEach(category => {
+                category.style.display = 'none';
+            });
+            
+            // 显示匹配的表情项及其父类别
+            document.querySelectorAll('.expression-item').forEach(item => {
+                const expressionText = item.textContent.toLowerCase();
+                if (expressionText.includes(searchTerm)) {
+                    item.style.display = 'block';
+                    
+                    // 显示父类别和子类别
+                    const parentSubcategory = item.closest('.subcategory');
+                    if (parentSubcategory) {
+                        parentSubcategory.style.display = 'block';
+                        // 设置子类别的toggle图标为打开状态
+                        const toggleIcon = parentSubcategory.querySelector('.toggle-icon');
+                        if (toggleIcon) toggleIcon.classList.add('open');
+                    }
+                    
+                    const parentCategory = item.closest('.category');
+                    if (parentCategory) {
+                        parentCategory.style.display = 'block';
+                        // 设置类别的toggle图标为打开状态
+                        const toggleIcon = parentCategory.querySelector('.toggle-icon');
+                        if (toggleIcon) toggleIcon.classList.add('open');
+                    }
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+        
+        // 事件监听器
+        videoPlayer.addEventListener('ended', () => {
+            // 如果设置了自动播放，则播放下一个随机表情
+            if (autoPlayInterval) {
+                playRandomExpression();
+            }
+        });
+        
+        randomBtn.addEventListener('click', playRandomExpression);
+        autoPlayBtn.addEventListener('click', toggleAutoPlay);
+        stopBtn.addEventListener('click', stopPlaying);
+        searchInput.addEventListener('input', handleSearch);
+        searchBtn.addEventListener('click', handleSearch);
+        
+        // 初始化
+        loadExpressionData();
+    </script>
+</body>
+</html> 
